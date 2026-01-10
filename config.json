@@ -7,7 +7,6 @@
     "cover_image": "__OUT/Simultaneous/cover.jpg"
   },
   "settings": {
-    "glossary_max_chars": 500000,
     "translation_max_tokens": 5000,
     "translation_context": 10
   }

@@ -94,11 +94,6 @@ class ConfigPaths:
     
     # Settings
     @property
-    def glossary_max_chars(self) -> int:
-        """Maximum characters for glossary generation."""
-        return self.settings['glossary_max_chars']
-    
-    @property
     def translation_max_tokens(self) -> int:
         """Maximum tokens per translation batch."""
         return self.settings['translation_max_tokens']
@@ -135,6 +130,5 @@ if __name__ == '__main__':
     print(f"Cover: {paths.cover_image}")
     print(f"Output EPUB: {paths.output_epub}")
     print(f"\nSettings:")
-    print(f"  Glossary max chars: {paths.glossary_max_chars}")
     print(f"  Translation max tokens: {paths.translation_max_tokens}")
     print(f"  Translation context: {paths.translation_context}")
