@@ -116,10 +116,10 @@ def load_prompt(prompt_path):
         sys.exit(1)
 
 
-def prepare_book_text(book_data, max_chars=500000):
+def prepare_book_text(book_data):
     """
     Подготовка текста книги для отправки в API.
-    Ограничивает размер текста для избежания превышения лимитов API.
+    Отправляет весь текст книги без ограничений.
     """
     print_step("Подготовка текста книги")
     
@@ -138,14 +138,8 @@ def prepare_book_text(book_data, max_chars=500000):
                 text_parts.append(f"\n## {chapter_title}\n\n")
                 
                 content = chapter.get('content', '')
-                if total_chars + len(content) > max_chars:
-                    print_warning(f"Достигнут лимит символов ({max_chars}). Используется частичный текст.")
-                    break
                 text_parts.append(content + '\n')
                 total_chars += len(content)
-            
-            if total_chars > max_chars:
-                break
                 
     elif 'chapters' in book_data:
         # Структура с главами без частей (Katabasis)
@@ -154,9 +148,6 @@ def prepare_book_text(book_data, max_chars=500000):
             text_parts.append(f"\n\n## {chapter_title}\n\n")
             
             content = chapter.get('content', '')
-            if total_chars + len(content) > max_chars:
-                print_warning(f"Достигнут лимит символов ({max_chars}). Используется частичный текст.")
-                break
             text_parts.append(content + '\n')
             total_chars += len(content)
             
@@ -168,17 +159,11 @@ def prepare_book_text(book_data, max_chars=500000):
             
             for paragraph in chapter.get('paragraphs', []):
                 para_text = paragraph.get('text', '')
-                if total_chars + len(para_text) > max_chars:
-                    print_warning(f"Достигнут лимит символов ({max_chars}). Используется частичный текст.")
-                    break
                 text_parts.append(para_text + '\n')
                 total_chars += len(para_text)
-            
-            if total_chars > max_chars:
-                break
     
     full_text = ''.join(text_parts)
-    print_success(f"Подготовлено {total_chars} символов текста")
+    print_success(f"Подготовлено {total_chars} символов текста (весь текст книги)")
     return full_text
 
 
@@ -392,7 +377,7 @@ def main():
     
     # 2. Загрузка книги
     book_data = load_book(str(paths.output_json))
-    book_text = prepare_book_text(book_data, max_chars=paths.glossary_max_chars)
+    book_text = prepare_book_text(book_data)
     
     # 3. Загрузка промптов
     prompt_glossary = load_prompt('.agent/Workflows/prompt_glossary.md')
