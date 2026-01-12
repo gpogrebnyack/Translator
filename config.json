@@ -1,10 +1,10 @@
 {
-  "book": "Simultaneous",
+  "book": "Shorefall",
   "paths": {
     "input_dir": "__IN",
     "output_dir": "__OUT",
     "epub_file": "Simultaneous_-_Eric_Heisserer.epub",
-    "cover_image": "__OUT/Simultaneous/cover.jpg"
+    "cover_image": "__OUT/Shorefall/cover.jpg"
   },
   "settings": {
     "translation_max_tokens": 5000,
