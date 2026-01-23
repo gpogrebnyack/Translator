@@ -199,13 +199,21 @@ def add_cover_image(book: epub.EpubBook, cover_path: str) -> Optional[str]:
     mime_type = MIME_TYPES.get(ext, 'image/jpeg')
     cover_name = f'images/cover{ext}'
     
-    cover_item = epub.EpubItem(
+    # Use EpubCover instead of EpubItem - it automatically sets cover-image property
+    # EpubCover constructor only takes uid and file_name
+    cover_item = epub.EpubCover(
         uid='cover-image',
-        file_name=cover_name,
-        media_type=mime_type,
-        content=cover_image
+        file_name=cover_name
     )
+    # Set media_type and content as attributes after creation
+    cover_item.media_type = mime_type
+    cover_item.content = cover_image
     book.add_item(cover_item)
+    
+    # Add metadata for cover (required for Kindle)
+    # Use None as namespace for custom OPF metadata with others parameter
+    book.add_metadata(None, 'meta', '', {'name': 'cover', 'content': 'cover-image'})
+    
     return cover_name
 
 

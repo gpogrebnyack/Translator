@@ -434,10 +434,16 @@ def main():
         part_num = part.get("part_number", part_idx)
         chapters = part.get("chapters", [])
         
-        # Check if part already fully translated
+        # Check if part already fully translated (by chapter_id, not index)
         if part_idx <= len(state.data.get("parts", [])):
             existing = state.data["parts"][part_idx - 1]
-            if existing.get("chapters") and len(existing["chapters"]) == len(chapters):
+            existing_chapters = existing.get("chapters") or []
+            by_id = {ch["chapter_id"]: ch for ch in existing_chapters}
+            all_done = len(chapters) > 0 and all(
+                (ch.get("chapter_id", f"ch{i}") in by_id and by_id[ch.get("chapter_id", f"ch{i}")].get("content"))
+                for i, ch in enumerate(chapters, 1)
+            )
+            if all_done:
                 print(f"\n   Part {part_num} done, skipping...")
                 continue
         
@@ -466,31 +472,32 @@ def main():
             }
             state.save()
         
+        # Rebuild chapters in source order, matching by chapter_id (not index)
+        existing_list = part_data.get("chapters", [])
+        by_id = {ch["chapter_id"]: ch for ch in existing_list}
+        part_data["chapters"] = []
+        for i, ch in enumerate(chapters, 1):
+            ch_id = ch.get("chapter_id", f"ch{i}")
+            part_data["chapters"].append(
+                by_id.pop(ch_id, None)
+                or {"chapter_id": ch_id, "title": "", "content": ""}
+            )
+
         # Translate chapters
         for ch_idx, chapter in enumerate(chapters, 1):
             ch_id = chapter.get("chapter_id", f"ch{ch_idx}")
-            
-            # Check if already translated
-            if ch_idx <= len(part_data.get("chapters", [])):
-                if part_data["chapters"][ch_idx - 1].get("content"):
-                    print(f"    Chapter {ch_idx} done, skipping...")
-                    continue
-            
+            ch_data = part_data["chapters"][ch_idx - 1]
+
+            if ch_data.get("content"):
+                print(f"    Chapter {ch_idx} ({ch_id}) done, skipping...")
+                continue
+
             print(f"    Chapter {ch_idx}/{len(chapters)} ({ch_id}): {chapter.get('title', '')}")
-            
-            # Initialize chapter data
-            if ch_idx > len(part_data["chapters"]):
-                ch_data = {"chapter_id": ch_id, "title": "", "content": ""}
-                part_data["chapters"].append(ch_data)
-            else:
-                ch_data = part_data["chapters"][ch_idx - 1]
-            
-            # Translate title
+
             if not ch_data.get("title"):
                 ch_data["title"] = translate_field(chapter["title"], glossary, "chapter title", style_guide)
                 state.save()
-            
-            # Translate content
+
             if not ch_data.get("content"):
                 print(f"      Content ({chapter.get('word_count', 0)} words)...")
                 ch_data["content"] = translate_content(

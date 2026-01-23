@@ -108,22 +108,49 @@ def find_epub_file(epub_dir: str, extension: str, default_name: str) -> Path:
         FileNotFoundError if file not found
     """
     epub_path = Path(epub_dir)
-    search_dirs = [epub_path, epub_path / 'OEBPS']
+    
+    # Common EPUB directory structures
+    search_dirs = [
+        epub_path,
+        epub_path / 'OEBPS',
+        epub_path / 'OPS',
+        epub_path / 'META-INF',
+    ]
     
     # Check default locations first
     for search_dir in search_dirs:
-        default_path = search_dir / default_name
-        if default_path.exists():
-            return default_path
+        if search_dir.exists():
+            default_path = search_dir / default_name
+            if default_path.exists():
+                return default_path
     
-    # Search for any file with the extension
+    # Search for any file with the extension in common directories
     for search_dir in search_dirs:
         if search_dir.exists():
             for file in search_dir.iterdir():
-                if file.suffix == extension:
+                if file.is_file() and file.suffix.lower() == extension.lower():
                     return file
     
-    raise FileNotFoundError(f"{default_name} not found in {epub_dir}")
+    # If still not found, do a recursive search through all subdirectories
+    for file_path in epub_path.rglob(f'*{extension}'):
+        if file_path.is_file():
+            return file_path
+    
+    # If recursive search also fails, provide helpful error message
+    found_files = []
+    for file_path in epub_path.rglob('*'):
+        if file_path.is_file():
+            found_files.append(str(file_path.relative_to(epub_path)))
+    
+    error_msg = f"{default_name} not found in {epub_dir}"
+    if found_files:
+        error_msg += f"\nFound files in directory: {', '.join(found_files[:20])}"
+        if len(found_files) > 20:
+            error_msg += f" ... and {len(found_files) - 20} more"
+    else:
+        error_msg += f"\nDirectory appears to be empty or inaccessible."
+    
+    raise FileNotFoundError(error_msg)
 
 
 def resolve_content_path(epub_dir: str, content_src: str) -> Path:
@@ -364,27 +391,56 @@ def parse_toc(ncx_path: Path, epub_dir: str) -> List[Dict[str, Any]]:
         is_chapter_class = (nav_point_class == 'chapter')
         
         # Check if this is a part
-        if 'Part' in label_text and ':' in label_text:
+        # Support multiple formats: "Part I: Title", "Part One", "Part 1", "Part 1: Title"
+        part_number = None
+        part_title = None
+        
+        # Try Roman numeral with colon: "Part I: Title"
+        match = re.search(r'^Part\s+([IVX]+):\s*(.+)$', label_text, re.IGNORECASE)
+        if match:
+            part_roman = match.group(1)
+            part_number = roman_to_int(part_roman)
+            part_title = f"Part {part_roman}: {match.group(2).strip()}"
+        
+        # Try Arabic numeral with colon: "Part 1: Title"
+        if part_number is None:
+            match = re.search(r'^Part\s+(\d+):\s*(.+)$', label_text, re.IGNORECASE)
+            if match:
+                part_number = int(match.group(1))
+                part_title = f"Part {match.group(1)}: {match.group(2).strip()}"
+        
+        # Try word number: "Part One", "Part Two"
+        if part_number is None:
+            match = re.search(r'^Part\s+(One|Two|Three|Four|Five|Six|Seven|Eight|Nine|Ten)$', label_text, re.IGNORECASE)
+            if match:
+                part_number = word_to_number(match.group(1))
+                if part_number:
+                    part_title = label_text.strip()
+        
+        # Try Arabic numeral without colon: "Part 1"
+        if part_number is None:
+            match = re.search(r'^Part\s+(\d+)$', label_text, re.IGNORECASE)
+            if match:
+                part_number = int(match.group(1))
+                part_title = label_text.strip()
+        
+        # If we found a part, treat it as a part
+        if part_number is not None:
             has_parts = True
             if current_part is not None:
                 parts.append(current_part)
             
-            part_match = re.search(r'Part\s+([IVX]+):\s*(.+)', label_text)
-            if part_match:
-                part_roman = part_match.group(1)
-                part_title = part_match.group(2).strip()
-                part_number = roman_to_int(part_roman)
-                
-                current_part = {
-                    'part_number': part_number,
-                    'part_title': f"Part {part_roman}: {part_title}",
-                    'part_file': str(resolve_content_path(epub_dir, content_src)),
-                    'chapters': []
-                }
+            current_part = {
+                'part_number': part_number,
+                'part_title': part_title or label_text.strip(),
+                'part_file': str(resolve_content_path(epub_dir, content_src)) if content_src else None,
+                'chapters': []
+            }
             
-            # Process child navPoints
+            # Process child navPoints (chapters within this part)
             for child in nav_point.findall('ncx:navPoint', ns):
                 process_nav_point(child, parent_is_part=True)
+            return
         
         elif parent_is_part or is_content_chapter(label_text) or is_chapter_class:
             # Skip if it's definitely metadata (regardless of class)
