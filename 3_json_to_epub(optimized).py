@@ -8,6 +8,7 @@ Supports both structured (with parts) and flat (chapters only) JSON formats.
 import json
 import os
 import html
+import re
 from pathlib import Path
 from typing import Dict, Any, Optional, List, Tuple
 from ebooklib import epub
@@ -125,6 +126,21 @@ def load_config(config_path: Optional[str] = None) -> Dict[str, Any]:
     
     with open(config_path, 'r', encoding='utf-8') as f:
         return json.load(f)
+
+
+def create_safe_id(text: str) -> str:
+    """Create a safe ID from text for use in HTML anchors (required for Kindle navigation)."""
+    # Convert to lowercase and replace spaces/special chars with underscores
+    safe_id = re.sub(r'[^\w\s-]', '', text.lower())
+    safe_id = re.sub(r'[-\s]+', '_', safe_id)
+    safe_id = safe_id.strip('_')
+    # Ensure it starts with a letter
+    if safe_id and not safe_id[0].isalpha():
+        safe_id = 'id_' + safe_id
+    # If empty, return a default
+    if not safe_id:
+        safe_id = 'heading'
+    return safe_id
 
 
 def format_text_to_html(content: str) -> str:
@@ -249,7 +265,8 @@ def add_title_page(book: epub.EpubBook, metadata: Dict[str, Any], nav_css: epub.
 def create_part_page(book: epub.EpubBook, part_idx: int, part_title: str, 
                      blockquote: Dict[str, str], nav_css: epub.EpubItem) -> epub.EpubHtml:
     """Create a part page with title and optional epigraph."""
-    body_content = f'<h1 class="part-title">{html.escape(part_title)}</h1>'
+    heading_id = create_safe_id(part_title)
+    body_content = f'<h1 class="part-title" id="{heading_id}">{html.escape(part_title)}</h1>'
     
     if blockquote:
         epigraph_text = blockquote.get('text', '')
@@ -272,7 +289,8 @@ def create_chapter_page(book: epub.EpubBook, part_idx: int, chapter: Dict[str, A
     chapter_content = chapter.get('content', '')
     
     formatted_content = format_text_to_html(chapter_content)
-    body_content = f'<h1 class="chapter-title">{html.escape(chapter_title)}</h1>\n    {formatted_content}'
+    heading_id = create_safe_id(chapter_title)
+    body_content = f'<h1 class="chapter-title" id="{heading_id}">{html.escape(chapter_title)}</h1>\n    {formatted_content}'
     
     file_name = f'part{part_idx:02d}_{chapter_id}.xhtml'
     return create_epub_item(book, chapter_title, file_name, body_content, nav_css)

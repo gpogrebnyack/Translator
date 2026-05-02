@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Скрипт для автоматической генерации глоссария и стилистического гайда
-для перевода книги с использованием Gemini API через OpenRouter.
+для перевода книги с использованием Gemini API через AIMLAPI.
 """
 
 import json
@@ -16,9 +16,10 @@ import time
 load_dotenv()
 
 # Константы
-OPENROUTER_API_KEY = os.getenv('OPENROUTER_API_KEY')
-OPENROUTER_MODEL = os.getenv('OPENROUTER_MODEL', 'google/gemini-3-pro-preview')
-OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions'
+# Primary provider: AIMLAPI. Keep OPENROUTER_* as fallback for compatibility.
+AIMLAPI_API_KEY = os.getenv('AIMLAPI_KEY') or os.getenv('OPENROUTER_API_KEY')
+AIMLAPI_MODEL = os.getenv('AIMLAPI_MODEL') or os.getenv('OPENROUTER_MODEL', 'google/gemini-3-1-pro-preview')
+AIMLAPI_API_URL = os.getenv('AIMLAPI_API_URL', 'https://api.aimlapi.com/v1/chat/completions')
 
 # Цвета для вывода в консоль
 class Colors:
@@ -50,6 +51,25 @@ def print_error(message):
 def print_warning(message):
     """Вывод предупреждения"""
     print(f"{Colors.WARNING}⚠ {message}{Colors.ENDC}")
+
+
+def normalize_assistant_content(content):
+    """Нормализация content (строка | список частей | None) в обычную строку."""
+    if content is None:
+        return ""
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        chunks = []
+        for item in content:
+            if isinstance(item, str):
+                chunks.append(item)
+            elif isinstance(item, dict):
+                text = item.get("text")
+                if isinstance(text, str):
+                    chunks.append(text)
+        return "".join(chunks)
+    return str(content)
 
 
 def load_config(config_path='config.json'):
@@ -167,23 +187,26 @@ def prepare_book_text(book_data):
     return full_text
 
 
-def call_openrouter_api(system_prompt, user_message, temperature=0.7, max_retries=3):
+def call_ai_provider_api(system_prompt, user_message, temperature=0.7, max_retries=3, model=None, api_key=None):
     """
-    Отправка запроса к OpenRouter API с повторными попытками при ошибках
+    Отправка запроса к AIMLAPI (OpenAI-compatible) API с повторными попытками при ошибках.
+    model и api_key опциональны — по умолчанию берутся из окружения.
     """
-    if not OPENROUTER_API_KEY:
-        print_error("OPENROUTER_API_KEY не найден в .env файле")
+    api_key = api_key or AIMLAPI_API_KEY
+    model = model or AIMLAPI_MODEL
+    if not api_key:
+        print_error("AIMLAPI_KEY не найден в .env (fallback: OPENROUTER_API_KEY)")
         sys.exit(1)
-    
+
     headers = {
-        'Authorization': f'Bearer {OPENROUTER_API_KEY}',
+        'Authorization': f'Bearer {api_key}',
         'Content-Type': 'application/json',
         'HTTP-Referer': 'https://github.com/translator-app',
         'X-Title': 'Book Translator - Glossary & Style Guide Generator'
     }
-    
+
     payload = {
-        'model': OPENROUTER_MODEL,
+        'model': model,
         'messages': [
             {'role': 'system', 'content': system_prompt},
             {'role': 'user', 'content': user_message}
@@ -196,7 +219,7 @@ def call_openrouter_api(system_prompt, user_message, temperature=0.7, max_retrie
         try:
             print_step(f"Отправка запроса к API (попытка {attempt + 1}/{max_retries})")
             response = requests.post(
-                OPENROUTER_API_URL,
+                AIMLAPI_API_URL,
                 headers=headers,
                 json=payload,
                 timeout=300  # 5 минут таймаут
@@ -204,9 +227,29 @@ def call_openrouter_api(system_prompt, user_message, temperature=0.7, max_retrie
             
             if response.status_code == 200:
                 result = response.json()
-                content = result['choices'][0]['message']['content']
-                print_success("Ответ получен от API")
-                return content
+                choices = result.get('choices') or []
+                if not choices:
+                    raise ValueError("API response has no choices")
+
+                choice = choices[0]
+                message = choice.get('message') or {}
+                content = normalize_assistant_content(message.get('content')).strip()
+                if content:
+                    print_success("Ответ получен от API")
+                    return content
+
+                print_warning(
+                    "Пустой ответ от API: "
+                    f"finish_reason={choice.get('finish_reason')!r}, "
+                    f"content_type={type(message.get('content')).__name__}"
+                )
+                if attempt < max_retries - 1:
+                    wait_time = (attempt + 1) * 10
+                    print_warning(f"Повторная попытка через {wait_time} секунд...")
+                    time.sleep(wait_time)
+                else:
+                    print_error("API вернул пустой ответ после всех попыток")
+                    sys.exit(1)
             else:
                 print_error(f"Ошибка API: {response.status_code}")
                 print_error(f"Ответ: {response.text}")
@@ -272,7 +315,7 @@ def generate_glossary(book_text, prompt_glossary):
     
     user_message = f"{prompt_glossary}\n\n# ТЕКСТ КНИГИ:\n\n{book_text}"
     
-    response = call_openrouter_api(system_prompt, user_message, temperature=0.5)
+    response = call_ai_provider_api(system_prompt, user_message, temperature=0.5)
     
     # Попытка извлечь JSON
     glossary_json = extract_json_from_response(response)
@@ -302,7 +345,7 @@ def generate_styleguide(book_text, glossary_text, prompt_styleguide):
     
     user_message = f"{prompt_styleguide}\n\n# ГЛОССАРИЙ:\n\n```json\n{glossary_str}\n```\n\n# ТЕКСТ КНИГИ:\n\n{book_text}"
     
-    response = call_openrouter_api(system_prompt, user_message, temperature=0.7)
+    response = call_ai_provider_api(system_prompt, user_message, temperature=0.7)
     
     return response
 

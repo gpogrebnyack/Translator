@@ -1,0 +1,80 @@
+{
+  "anthropic/claude-opus-4.7": {
+    "json_valid": true,
+    "ref_total": 123,
+    "cand_total": 599,
+    "covered_exact": 92,
+    "covered_fuzzy": 98,
+    "coverage_pct": 79.7,
+    "translation_match": 49,
+    "translation_match_pct": 53.3,
+    "extras": 507,
+    "missing_required_categories": [],
+    "extra_categories": []
+  },
+  "anthropic/claude-sonnet-4.6": {
+    "json_valid": true,
+    "ref_total": 123,
+    "cand_total": 558,
+    "covered_exact": 91,
+    "covered_fuzzy": 98,
+    "coverage_pct": 79.7,
+    "translation_match": 47,
+    "translation_match_pct": 51.6,
+    "extras": 467,
+    "missing_required_categories": [],
+    "extra_categories": []
+  },
+  "google/gemini-3-flash-preview": {
+    "json_valid": true,
+    "ref_total": 123,
+    "cand_total": 108,
+    "covered_exact": 56,
+    "covered_fuzzy": 62,
+    "coverage_pct": 50.4,
+    "translation_match": 31,
+    "translation_match_pct": 55.4,
+    "extras": 52,
+    "missing_required_categories": [],
+    "extra_categories": []
+  },
+  "google/gemini-3.1-pro-preview": {
+    "json_valid": true,
+    "ref_total": 123,
+    "cand_total": 224,
+    "covered_exact": 81,
+    "covered_fuzzy": 88,
+    "coverage_pct": 71.5,
+    "translation_match": 53,
+    "translation_match_pct": 65.4,
+    "extras": 143,
+    "missing_required_categories": [],
+    "extra_categories": []
+  },
+  "openai/gpt-5.4-pro": {
+    "json_valid": true,
+    "ref_total": 123,
+    "cand_total": 499,
+    "covered_exact": 86,
+    "covered_fuzzy": 95,
+    "coverage_pct": 77.2,
+    "translation_match": 46,
+    "translation_match_pct": 53.5,
+    "extras": 413,
+    "missing_required_categories": [],
+    "extra_categories": []
+  },
+  "qwen/qwen3.6-plus": {
+    "json_valid": true,
+    "ref_total": 123,
+    "cand_total": 229,
+    "covered_exact": 67,
+    "covered_fuzzy": 73,
+    "coverage_pct": 59.3,
+    "translation_match": 39,
+    "translation_match_pct": 58.2,
+    "extras": 162,
+    "missing_required_categories": [],
+    "extra_categories": []
+  }
+}

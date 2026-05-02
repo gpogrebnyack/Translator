@@ -1,0 +1,35 @@
+[94m▶ Загрузка книги из /Users/gpogrebnyak/Downloads/Cursor/Translator (optimized)/__OUT/Dark Age/Dark Age -FULL.json[0m
+[92m✓ Книга загружена: 5 частей, 96 глав[0m
+[94m▶ Подготовка текста книги[0m
+[92m✓ Подготовлено 1537287 символов текста (весь текст книги)[0m
+Книга: 1541204 символов, ~385301 токенов
+▶ Валидация slug-ов через OpenRouter /models ...
+  ✓ anthropic/claude-sonnet-4.6 (context: 1000000)
+  ✓ google/gemini-3-flash-preview (context: 1048576)
+  ✓ qwen/qwen3.6-plus (context: 1000000)
+  ✓ openai/gpt-5.4-pro (context: 1050000)
+  ✓ anthropic/claude-opus-4.7 (context: 1000000)
+  ✓ google/gemini-3.1-pro-preview (context: 1048576)
+⏭  anthropic/claude-sonnet-4.6 — уже есть meta.json, пропускаю
+⏭  google/gemini-3-flash-preview — уже есть meta.json, пропускаю
+⏭  qwen/qwen3.6-plus — уже есть meta.json, пропускаю
+
+============================================================
+▶ GPT-5.4 Pro  (openai/gpt-5.4-pro)
+============================================================
+  ✓ Глоссарий: 369620p / 27127c токенов, 998.3с, json_valid=True
+  ✓ Стайлгайд: 378099p / 11758c токенов, 541.7с
+
+============================================================
+▶ Claude Opus 4.7  (anthropic/claude-opus-4.7)
+============================================================
+  ✓ Глоссарий: 557393p / 11694c токенов, 122.8с, json_valid=True
+  ✓ Стайлгайд: 570464p / 7650c токенов, 108.0с
+
+============================================================
+▶ Gemini 3.1 Pro  (google/gemini-3.1-pro-preview)
+============================================================
+  ✓ Глоссарий: 377134p / 9075c токенов, 68.3с, json_valid=True
+  ✓ Стайлгайд: 382457p / 4097c токенов, 52.8с
+
+✓ Бенчмарк завершён. Следующий шаг: bench/diff_vs_reference.py и bench/judge.py

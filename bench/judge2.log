@@ -1,0 +1,24 @@
+[94m▶ Загрузка книги из /Users/gpogrebnyak/Downloads/Cursor/Translator (optimized)/__OUT/Dark Age/Dark Age -FULL.json[0m
+[92m✓ Книга загружена: 5 частей, 96 глав[0m
+[94m▶ Подготовка текста книги[0m
+[92m✓ Подготовлено 1537287 символов текста (весь текст книги)[0m
+
+▶ Судья openai/gpt-5.4-pro оценивает anthropic/claude-sonnet-4.6 ...
+  средний балл: 6.29
+
+▶ Судья anthropic/claude-opus-4.7 оценивает anthropic/claude-sonnet-4.6 ...
+  средний балл: 7.43
+
+▶ Судья openai/gpt-5.4-pro оценивает google/gemini-3-flash-preview ...
+  средний балл: 5.71
+
+▶ Судья anthropic/claude-opus-4.7 оценивает google/gemini-3-flash-preview ...
+  средний балл: 7.00
+
+▶ Судья openai/gpt-5.4-pro оценивает qwen/qwen3.6-plus ...
+  средний балл: 6.43
+
+▶ Судья anthropic/claude-opus-4.7 оценивает qwen/qwen3.6-plus ...
+  средний балл: 7.57
+
+✓ judge_report.json сохранён

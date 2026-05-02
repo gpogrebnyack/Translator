@@ -1,10 +1,10 @@
 {
-  "book": "Shorefall",
+  "book": "Dark Age",
   "paths": {
     "input_dir": "__IN",
     "output_dir": "__OUT",
-    "epub_file": "The Founders Trilogy/Shorefall - Robert Jackson Bennett.epub",
-    "cover_image": "__OUT/Shorefall/cover.jpg"
+    "epub_file": "Dark_Age_-_Pierce_Brown.epub",
+    "cover_image": "__OUT/Dark Age/cover.jpg"
   },
   "settings": {
     "translation_max_tokens": 5000,

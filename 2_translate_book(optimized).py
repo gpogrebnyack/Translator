@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Book Translation Script (Optimized Version)
-Simplified and optimized version with OpenRouter API only.
+Simplified and optimized version with AIMLAPI (OpenAI-compatible endpoint).
 """
 
 import json
@@ -19,9 +19,10 @@ load_dotenv()
 # ============================================================================
 # API CONFIGURATION
 # ============================================================================
-API_URL = "https://openrouter.ai/api/v1/chat/completions"
-API_KEY = os.getenv("OPENROUTER_API_KEY")
-MODEL = os.getenv("OPENROUTER_MODEL", "google/gemini-3-flash-preview")
+API_URL = os.getenv("AIMLAPI_API_URL", "https://api.aimlapi.com/v1/chat/completions")
+# Backward compatible fallback to old OPENROUTER_* env vars
+API_KEY = os.getenv("AIMLAPI_KEY") or os.getenv("OPENROUTER_API_KEY")
+MODEL = os.getenv("AIMLAPI_MODEL") or os.getenv("OPENROUTER_MODEL", "google/gemini-3-1-pro-preview")
 
 # Default values (will be overridden by config if available)
 MAX_TOKENS_PER_BATCH = 5000
@@ -149,6 +150,48 @@ def format_glossary_for_prompt(glossary: Dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
+def normalize_assistant_content(content: Any) -> str:
+    """
+    OpenRouter / Gemini may return message.content as str, null, or a list of parts
+    (e.g. [{'type': 'text', 'text': '...'}]). Coerce to a single string.
+    """
+    if content is None:
+        return ""
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        parts: List[str] = []
+        for item in content:
+            if isinstance(item, str):
+                parts.append(item)
+            elif isinstance(item, dict):
+                t = item.get("text")
+                if isinstance(t, str):
+                    parts.append(t)
+        return "".join(parts)
+    return str(content)
+
+
+def log_empty_response_diagnostics(result: Dict[str, Any], choice: Dict[str, Any]) -> None:
+    """Print why the model returned no usable text (helps debug OpenRouter/Gemini quirks)."""
+    msg = choice.get("message") or {}
+    raw_content = msg.get("content")
+    preview = raw_content
+    if isinstance(preview, str) and len(preview) > 120:
+        preview = preview[:120] + "…"
+    print(
+        "    Empty response detail:"
+        f" finish_reason={choice.get('finish_reason')!r}"
+        f" native_finish_reason={choice.get('native_finish_reason')!r}"
+        f" refusal={msg.get('refusal')!r}"
+        f" content_type={type(raw_content).__name__}"
+        f" raw_preview={preview!r}"
+    )
+    err = result.get("error")
+    if err:
+        print(f"    Top-level error field: {err!r}")
+
+
 def get_last_paragraphs(text: str, count: int = 3) -> str:
     """Extract last N paragraphs from text for context."""
     if not text:
@@ -162,7 +205,7 @@ def get_last_paragraphs(text: str, count: int = 3) -> str:
 
 
 def call_api(prompt: str, max_tokens: int = 60000, max_retries: int = 3, retry_timeout: int = 60) -> str:
-    """Make API call to OpenRouter. Returns translated text."""
+    """Make API call to AIMLAPI-compatible endpoint. Returns translated text."""
     headers = {
         "Content-Type": "application/json",
         "Authorization": f"Bearer {API_KEY}"
@@ -178,6 +221,10 @@ def call_api(prompt: str, max_tokens: int = 60000, max_retries: int = 3, retry_t
     for attempt in range(1, max_retries + 1):
         try:
             response = requests.post(API_URL, headers=headers, json=payload, timeout=180)
+            if response.status_code >= 400:
+                body = (response.text or "").strip()[:2000]
+                if body:
+                    print(f"    API detail ({response.status_code}): {body}")
             response.raise_for_status()
             
             result = response.json()
@@ -185,7 +232,8 @@ def call_api(prompt: str, max_tokens: int = 60000, max_retries: int = 3, retry_t
                 raise ValueError("Invalid API response: no choices")
             
             choice = result["choices"][0]
-            text = choice["message"]["content"]
+            msg = choice.get("message") or {}
+            text = normalize_assistant_content(msg.get("content"))
             
             if choice.get("finish_reason") == "length":
                 print(f"    Warning: Response truncated")
@@ -200,6 +248,7 @@ def call_api(prompt: str, max_tokens: int = 60000, max_retries: int = 3, retry_t
             if text:
                 return text
             
+            log_empty_response_diagnostics(result, choice)
             if attempt < max_retries:
                 print(f"    Empty response (attempt {attempt}/{max_retries}). Retrying in {retry_timeout}s...")
                 time.sleep(retry_timeout)
@@ -377,7 +426,7 @@ def main():
     
     # Validate API key
     if not API_KEY:
-        raise ValueError("OPENROUTER_API_KEY not found. Set it in .env file.")
+        raise ValueError("AIMLAPI_KEY not found (fallback: OPENROUTER_API_KEY). Set it in .env file.")
     
     print("=" * 60)
     print("Book Translation Script (Optimized)")
